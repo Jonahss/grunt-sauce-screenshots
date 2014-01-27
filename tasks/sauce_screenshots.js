@@ -19,12 +19,14 @@ function filenameForBrowser(browserSpec) {
   return filename;
 }
 
+var DEFAULTS = {
+  timeout: 5 * 60 * 1000 // 5 minutes
+};
+
 module.exports = function(grunt) {
   grunt.registerMultiTask('sauce_screenshots', 'Takes screenshots of webpages in various browsers using Sauce', function() {
     // Merge task-specific and/or target-specific options with these defaults.
-    var options = this.options({
-      timeout: 5 * 60 * 1000 // 5 minutes
-    });
+    var options = grunt.util._.extend.apply(null, [{}, DEFAULTS, this.data]);
     // options.browsers
     if (options.browsers === undefined) {
       grunt.fail.warn('Required option "browsers" not specified!');
@@ -71,6 +73,13 @@ module.exports = function(grunt) {
       grunt.fail.warn('"timeout" option was of invalid type! Must be a (function returning a) number.');
     }
 
+    if (!process.env.SAUCE_USERNAME) {
+      grunt.fail.warn('Required environment variable $SAUCE_USERNAME not set!');
+    }
+    if (!process.env.SAUCE_ACCESS_KEY) {
+      grunt.fail.warn('Required environment variable $SAUCE_ACCESS_KEY not set!');
+    }
+
     var done = this.async();
     grunt.log.writeln('Connecting to Sauce Labs...');
     var browser = wd.promiseChainRemote('ondemand.saucelabs.com', 80, process.env.SAUCE_USERNAME, process.env.SAUCE_ACCESS_KEY);
@@ -82,12 +91,13 @@ module.exports = function(grunt) {
         var filepath = path.join(destDir, filenameForBrowser(browserSpec));
 
         return (browserWisePromise
-          .init(browserSpec, function (err, sessionId) {
+          .init(browserSpec, function (err, sessionInfo) {
             if (err) {
               throw err;
             }
+            var sessionId = sessionInfo[0];
             grunt.log.writeln();
-            grunt.log.writeln('Initialized session ' + sessionId + '.');
+            grunt.log.writeln('Initialized session ' + sessionId.yellow + '.');
           })
           .then(function () {
             grunt.log.writeflags(browserSpec, 'Screenshotting ' + url.underline + ' in');
@@ -105,17 +115,17 @@ module.exports = function(grunt) {
             grunt.file.write(filepath, pngBuf);
             grunt.log.writeln('Screenshot ' + filepath.bold.cyan + ' snapped.');
           })
+          .fin(function() {
+            return browser.quit(function (err) {
+              throw err;
+            });
+          })
         );
       }, urlWisePromise);
     }, browser);
-    
+
     (screenshotsPromise
-      .timeout(options.timeout, 'Sauce screenshotting process timed out!')
-      .fin(function() {
-        return browser.quit(function (err) {
-          throw err;
-        });
-      })
+      .timeout(options.timeout, 'Sauce screenshotting process exceeded ' + options.timeout + 'ms timeout!')
       .fail(function (err) {
         grunt.fail.warn(err);
       })

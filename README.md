@@ -1,6 +1,8 @@
 # grunt-sauce-screenshots
+[![Dependency Status](https://david-dm.org/cvrebert/grunt-sauce-screenshots.png)](https://david-dm.org/cvrebert/grunt-sauce-screenshots)
+[![devDependency Status](https://david-dm.org/cvrebert/grunt-sauce-screenshots/dev-status.png)](https://david-dm.org/cvrebert/grunt-sauce-screenshots#info=devDependencies)
 
-> Takes screenshots of webpages in various browsers using Sauce
+> Takes screenshots of webpages in various browsers using [Sauce](http://saucelabs.com)
 
 ## Getting Started
 This plugin requires Grunt `~0.4.2`
@@ -25,65 +27,103 @@ In your project's Gruntfile, add a section named `sauce_screenshots` to the data
 ```js
 grunt.initConfig({
   sauce_screenshots: {
-    options: {
-      // Task-specific options go here.
-    },
     your_target: {
-      // Target-specific file lists and/or options go here.
+      // Target-specific options go here.
     },
   },
 });
 ```
+
+### Environment variables
+
+This task requires the following environment variables to be set:
+* `$SAUCE_USERNAME` - Sauce account username
+* `$SAUCE_ACCESS_KEY` - secret access key for the Sauce account
+
+### Screenshot naming scheme
+
+Within each per-URL directory, screenshot image files are named according to the browser used:
+`{{ browserName }}-{{ platform }}-{{ version }}.png` (all screenshots are [PNGs](http://en.wikipedia.org/wiki/Portable_Network_Graphics))
+* All spaces in the filename components are replaced with underscores.
+* If no `version` is specified in the Sauce config for the browser, the empty string will be used for the `version` portion of the filename.
+
+Examples:
+* `chrome-OS_X_10.9-31.png`
+* `internet_explorer-Windows_8.1-.png`
 
 ### Options
 
-#### options.separator
-Type: `String`
-Default value: `',  '`
+#### options.browsers
+Type: `Array` or `String` or function returning `Array`
 
-A string value that is used to do something with whatever.
+**Required**
 
-#### options.punctuation
-Type: `String`
-Default value: `'.'`
+An array of Sauce browser specifications. All the URLs will be screenshotted in all of these browsers.
+If a string is given, it is used as the path to a YAML file containing such an array.
+If a function is given, it is called (with no arguments) and must return such an array.
 
-A string value that is used to do something else with whatever else.
+Example value:
+```json
+[
+  {
+    "browserName": "chrome",
+    "platform": "OS X 10.9",
+    "version": "31"
+  },
+  ...
+]
+```
+
+Relevant Sauce docs: https://saucelabs.com/docs/platforms/webdriver
+
+#### options.urls
+Type: `Object` (key-value mapping) or function returning `Object`; keys are `String`s representing URLs; values are `String` paths to directories
+
+**Required**
+
+A mapping of webpage URLs (to take screenshots of) to directory paths (to store all the screenshots of the corresponding URL in).
+
+#### options.timeout
+Type: `Number` or function returning `Number`
+
+Default value: 5 minutes
+
+The maximum allowed duration of the entire screenshotting process, in milliseconds.
+If a function is given, it is called with an object having `urls` and `browsers` as keys, with the values being the length of their respective arrays; it must return a number.
 
 ### Usage Examples
 
-#### Default Options
-In this example, the default options are used to do something with whatever. So if the `testing` file has the content `Testing` and the `123` file had the content `1 2 3`, the generated result would be `Testing, 1 2 3.`
-
 ```js
 grunt.initConfig({
   sauce_screenshots: {
-    options: {},
-    files: {
-      'dest/default_options': ['src/testing', 'src/123'],
-    },
-  },
+    mySites: {
+      timeout: 60000
+      browsers: [
+        {
+          browserName: "chrome",
+          platform: "OS X 10.9",
+          version: "31"
+        },
+        {
+          browserName: "firefox",
+          platform: "Linux"
+        }
+      ],
+      urls: {
+        'http://www.reddit.com/r/programming/': './screenshots/proggit/',
+        'http://127.0.0.1:8080/my-demo': './screenshots/my-site/'
+      }
+    }
+  }
 });
 ```
 
-#### Custom Options
-In this example, custom options are used to do something else with whatever else. So if the `testing` file has the content `Testing` and the `123` file had the content `1 2 3`, the generated result in this case would be `Testing: 1 2 3 !!!`
+## Users
 
-```js
-grunt.initConfig({
-  sauce_screenshots: {
-    options: {
-      separator: ': ',
-      punctuation: ' !!!',
-    },
-    files: {
-      'dest/default_options': ['src/testing', 'src/123'],
-    },
-  },
-});
-```
+This Grunt task is being created with the intention of being used by [Bootstrap](https://github.com/twbs/bootstrap) for visual CSS regression testing.
 
 ## Contributing
-In lieu of a formal styleguide, take care to maintain the existing coding style. Add unit tests for any new or changed functionality. Lint and test your code using [Grunt](http://gruntjs.com/).
+Use the `jshint` and `jscs` [Grunt](http://gruntjs.com/) tasks to check your compliance with the project's coding style. Add unit tests for any new or changed functionality.
 
 ## Release History
 _(Nothing yet)_

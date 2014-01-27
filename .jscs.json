@@ -18,6 +18,6 @@
     "disallowTrailingWhitespace": true,
     "requireCapitalizedConstructors": true,
     "excludeFiles": [
-        "node_modules/**",
+        "node_modules/**"
     ]
 }
