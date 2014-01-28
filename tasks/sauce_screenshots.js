@@ -11,12 +11,56 @@
 var path = require('path');
 
 var colors = require('colors');
+var SauceTunnel = require('sauce-tunnel');
 var wd = require('wd');
 
 function filenameForBrowser(browserSpec) {
   var cleanVersion = (browserSpec.version === undefined ? '' : browserSpec.version);
   var filename = (browserSpec.browserName + '-' + browserSpec.platform + '-' + cleanVersion).replace(/ /g, '_') + '.png';
   return filename;
+}
+
+function takeScreenshots(grunt, browser, options) {
+  var screenshotsPromise = options.browsers.reduce(function (browserWisePromise, browserSpec) {
+    var browserFilename = filenameForBrowser(browserSpec);
+    browserWisePromise = browserWisePromise.init(browserSpec, function (err, sessionInfo) {
+      if (err) {
+        throw err;
+      }
+      var sessionId = sessionInfo[0];
+      grunt.log.writeln();
+      grunt.log.writeflags(browserSpec, 'Initialized session ' + sessionId.yellow + ' for browser');
+    });
+    browserWisePromise = Object.keys(options.urls).reduce(function (urlWisePromise, url) {
+      var destDir = options.urls[url];
+      var filepath = path.join(destDir, browserFilename);
+
+      return (urlWisePromise
+        .then(function () {
+          grunt.log.writeln('Screenshotting ' + url.underline + ' ...');
+        })
+        .get(url, function (err) {
+          if (err) {
+            throw err;
+          }
+        })
+        .takeScreenshot(function (err, base64png) {
+          if (err) {
+            throw err;
+          }
+          var pngBuf = new Buffer(base64png, 'base64');
+          grunt.file.write(filepath, pngBuf);
+          grunt.log.writeln('Screenshot ' + filepath.bold.cyan + ' snapped.');
+        })
+      );
+    }, browserWisePromise);
+    return browserWisePromise.fin(function() {
+      return browser.quit(function (err) {
+        throw err;
+      });
+    });
+  }, browser);
+  return screenshotsPromise;
 }
 
 var DEFAULTS = {
@@ -82,56 +126,31 @@ module.exports = function(grunt) {
 
     var done = this.async();
     grunt.log.writeln('Connecting to Sauce Labs...');
-    var browser = wd.promiseChainRemote('ondemand.saucelabs.com', 80, process.env.SAUCE_USERNAME, process.env.SAUCE_ACCESS_KEY);
+    var tunnel = new SauceTunnel(process.env.SAUCE_USERNAME, process.env.SAUCE_ACCESS_KEY);
+    tunnel.start(function (status) {
+      if (status === false) {
+        grunt.warn.fail('Problem establishing tunnel to Sauce Labs!');
+      }
 
-    var screenshotsPromise = options.browsers.reduce(function (browserWisePromise, browserSpec) {
-      var browserFilename = filenameForBrowser(browserSpec);
-      browserWisePromise = browserWisePromise.init(browserSpec, function (err, sessionInfo) {
-        if (err) {
-          throw err;
-        }
-        var sessionId = sessionInfo[0];
-        grunt.log.writeln();
-        grunt.log.writeflags(browserSpec, 'Initialized session ' + sessionId.yellow + ' for browser');
-      });
-      browserWisePromise = Object.keys(options.urls).reduce(function (urlWisePromise, url) {
-        var destDir = options.urls[url];
-        var filepath = path.join(destDir, browserFilename);
+      var browser = wd.promiseChainRemote('ondemand.saucelabs.com', 80, process.env.SAUCE_USERNAME, process.env.SAUCE_ACCESS_KEY);
 
-        return (urlWisePromise
-          .then(function () {
-            grunt.log.writeln('Screenshotting ' + url.underline + ' ...');
-          })
-          .get(url, function (err) {
+      var screenshotsPromise = takeScreenshots(grunt, browser, options);
+      (screenshotsPromise
+        .fin(function () {
+          tunnel.stop(function (err) {
             if (err) {
               throw err;
             }
-          })
-          .takeScreenshot(function (err, base64png) {
-            if (err) {
-              throw err;
-            }
-            var pngBuf = new Buffer(base64png, 'base64');
-            grunt.file.write(filepath, pngBuf);
-            grunt.log.writeln('Screenshot ' + filepath.bold.cyan + ' snapped.');
-          })
-        );
-      }, browserWisePromise);
-      return browserWisePromise.fin(function() {
-        return browser.quit(function (err) {
-          throw err;
-        });
-      });
-    }, browser);
-
-    (screenshotsPromise
-      .timeout(options.timeout, 'Sauce screenshotting process exceeded ' + options.timeout + 'ms timeout!')
-      .fail(function (err) {
-        grunt.fail.warn(err);
-      })
-      .then(function () {
-        done(true);
-      })
-    );
+          });
+        })
+        .timeout(options.timeout, 'Sauce screenshotting process exceeded ' + options.timeout + 'ms timeout!')
+        .fail(function (err) {
+          grunt.fail.warn(err);
+        })
+        .then(function () {
+          done(true);
+        })
+      );
+    });
   });
 };
