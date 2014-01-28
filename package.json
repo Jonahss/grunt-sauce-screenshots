@@ -1,7 +1,7 @@
 {
   "name": "grunt-sauce-screenshots",
   "description": "Takes screenshots of webpages in various browsers using Sauce",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "homepage": "https://github.com/cvrebert/grunt-sauce-screenshots",
   "author": {
     "name": "Chris Rebert",
