@@ -20,9 +20,10 @@ function filenameForBrowser(browserSpec) {
   return filename;
 }
 
-function takeScreenshots(grunt, browser, options) {
+function takeScreenshots(grunt, tunnelIdentifier, browser, options) {
   var screenshotsPromise = options.browsers.reduce(function (browserWisePromise, browserSpec) {
     var browserFilename = filenameForBrowser(browserSpec);
+    // BROKEN: browserSpec['tunnel-identifier'] = tunnelIdentifier;
     browserWisePromise = browserWisePromise.init(browserSpec, function (err, sessionInfo) {
       if (err) {
         throw err;
@@ -127,6 +128,7 @@ module.exports = function(grunt) {
     var done = this.async();
     grunt.log.writeln('Connecting to Sauce Labs...');
     var tunnel = new SauceTunnel(process.env.SAUCE_USERNAME, process.env.SAUCE_ACCESS_KEY);
+    grunt.log.writeln('Tunnel identifier: ' + tunnel.identifier);
     /////
      var configureLogEvents = function (tunnel) {
       var methods = ['write', 'writeln', 'error', 'ok', 'debug'];
@@ -148,7 +150,7 @@ module.exports = function(grunt) {
 
       var browser = wd.promiseChainRemote('ondemand.saucelabs.com', 80, process.env.SAUCE_USERNAME, process.env.SAUCE_ACCESS_KEY);
 
-      var screenshotsPromise = takeScreenshots(grunt, browser, options);
+      var screenshotsPromise = takeScreenshots(grunt, tunnel.identifier, browser, options);
       (screenshotsPromise
         .fin(function () {
           tunnel.stop(function (err) {
