@@ -92,7 +92,7 @@ module.exports = function(grunt) {
         }
         var sessionId = sessionInfo[0];
         grunt.log.writeln();
-        grunt.log.writeln('Initialized session ' + sessionId.yellow + '.');
+        grunt.log.writeflags(browserSpec, 'Initialized session ' + sessionId.yellow + ' for browser');
       });
       browserWisePromise = Object.keys(options.urls).reduce(function (urlWisePromise, url) {
         var destDir = options.urls[url];
@@ -100,7 +100,7 @@ module.exports = function(grunt) {
 
         return (urlWisePromise
           .then(function () {
-            grunt.log.writeflags(browserSpec, 'Screenshotting ' + url.underline + ' in');
+            grunt.log.writeln('Screenshotting ' + url.underline + ' ...');
           })
           .get(url, function (err) {
             if (err) {
