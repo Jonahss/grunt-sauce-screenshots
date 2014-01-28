@@ -84,21 +84,21 @@ module.exports = function(grunt) {
     grunt.log.writeln('Connecting to Sauce Labs...');
     var browser = wd.promiseChainRemote('ondemand.saucelabs.com', 80, process.env.SAUCE_USERNAME, process.env.SAUCE_ACCESS_KEY);
 
-    var screenshotsPromise = Object.keys(options.urls).reduce(function (urlWisePromise, url) {
-      var destDir = options.urls[url];
+    var screenshotsPromise = options.browsers.reduce(function (browserWisePromise, browserSpec) {
+      var browserFilename = filenameForBrowser(browserSpec);
+      browserWisePromise = browserWisePromise.init(browserSpec, function (err, sessionInfo) {
+        if (err) {
+          throw err;
+        }
+        var sessionId = sessionInfo[0];
+        grunt.log.writeln();
+        grunt.log.writeln('Initialized session ' + sessionId.yellow + '.');
+      });
+      browserWisePromise = Object.keys(options.urls).reduce(function (urlWisePromise, url) {
+        var destDir = options.urls[url];
+        var filepath = path.join(destDir, browserFilename);
 
-      return options.browsers.reduce(function (browserWisePromise, browserSpec) {
-        var filepath = path.join(destDir, filenameForBrowser(browserSpec));
-
-        return (browserWisePromise
-          .init(browserSpec, function (err, sessionInfo) {
-            if (err) {
-              throw err;
-            }
-            var sessionId = sessionInfo[0];
-            grunt.log.writeln();
-            grunt.log.writeln('Initialized session ' + sessionId.yellow + '.');
-          })
+        return (urlWisePromise
           .then(function () {
             grunt.log.writeflags(browserSpec, 'Screenshotting ' + url.underline + ' in');
           })
@@ -115,13 +115,13 @@ module.exports = function(grunt) {
             grunt.file.write(filepath, pngBuf);
             grunt.log.writeln('Screenshot ' + filepath.bold.cyan + ' snapped.');
           })
-          .fin(function() {
-            return browser.quit(function (err) {
-              throw err;
-            });
-          })
         );
-      }, urlWisePromise);
+      }, browserWisePromise);
+      return browserWisePromise.fin(function() {
+        return browser.quit(function (err) {
+          throw err;
+        });
+      });
     }, browser);
 
     (screenshotsPromise
