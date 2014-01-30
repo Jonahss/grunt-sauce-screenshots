@@ -23,7 +23,7 @@ function filenameForBrowser(browserSpec) {
 function takeScreenshots(grunt, tunnelIdentifier, browser, options) {
   var screenshotsPromise = options.browsers.reduce(function (browserWisePromise, browserSpec) {
     var browserFilename = filenameForBrowser(browserSpec);
-    // BROKEN: browserSpec['tunnel-identifier'] = tunnelIdentifier;
+    browserSpec['tunnel-identifier'] = tunnelIdentifier;
     browserWisePromise = browserWisePromise.init(browserSpec, function (err, sessionInfo) {
       if (err) {
         throw err;
@@ -127,7 +127,7 @@ module.exports = function(grunt) {
 
     var done = this.async();
     grunt.log.writeln('Connecting to Sauce Labs...');
-    var tunnel = new SauceTunnel(process.env.SAUCE_USERNAME, process.env.SAUCE_ACCESS_KEY);
+    var tunnel = new SauceTunnel(process.env.SAUCE_USERNAME, process.env.SAUCE_ACCESS_KEY, null, true);
     grunt.log.writeln('Tunnel identifier: ' + tunnel.identifier);
     /////
      var configureLogEvents = function (tunnel) {
